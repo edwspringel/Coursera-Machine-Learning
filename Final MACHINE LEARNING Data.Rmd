@@ -1,0 +1,98 @@
+---
+title: "Machine Learning Final Project"
+author: "Edward S."
+date: "November 5, 2017"
+output:
+  html_document: default
+  word_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(echo = TRUE, root.dir='C:/Users/edwsp/Desktop/MACHINE LEARNING')
+```
+
+
+```{r set up}
+setwd("C:/Users/edwsp/Desktop/MACHINE LEARNING")
+set.seed(1986)
+library(knitr)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(randomForest)
+```
+
+
+#Obtain data:
+```{r getting and loading the data}
+if(!file.exists("training.csv")){
+  dir.create("training.csv")
+  train_url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+  download.file(url=train_url, destfile="training.csv")
+  date.Downloaded.training<-date()}
+
+if(!file.exists("testing.csv")){
+  dir.create("testing.csv")
+  test_url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+  download.file(url=test_url, destfile="testing.csv")
+  date.Downloaded.testing<-date()}
+
+train <- read.csv("training.csv", na.strings=c("NA","#DIV/0!",""))
+test <- read.csv("testing.csv", na.strings=c("NA","#DIV/0!",""))
+```
+
+
+#Examine the data: I started out by looking much more closely than included below, just listed the short output things.
+```{r quick look at the data}
+#names(train)
+dim(train)
+dim(test)
+summary(train$classe)
+```
+
+
+#Partition the training dataset into a training and test set..
+```{r Data Partition}
+inTrain <- createDataPartition(train$classe, p=3/4, list=FALSE)
+myTrain <- train[inTrain,]
+myTest <- train[-inTrain,]
+```
+
+
+#Data clean-up: remove if >50%NA, no variability, or not meaningful (i.e. labels)- takes us down to ~52 usable variables
+```{r Removing Variables- clean up to get the usable data}
+myTrain->Tr
+dim(Tr)
+nzv <- nearZeroVar(Tr, saveMetrics=TRUE)
+Tr <- Tr[,nzv$nzv==FALSE]
+dim(Tr)
+Tr<-Tr[,-which(colMeans(is.na(Tr))>0.5)]
+dim(Tr)
+drop<-names(Tr) %in% c("X","raw_timestamp_part_1","user_name","raw_timestamp_part_2","cvtd_timestamp", "new_window", "num_window")
+Tr<-Tr[!drop]
+dim(Tr)
+```
+
+
+#Build a Simple Random Forest Model and determine in Sample Accuracy as ~99.9%:
+```{r Random Forest Modeling}
+rfMod<-randomForest(classe~., data=Tr)
+predictTrain <- predict(rfMod, myTrain, type = "class")
+confusionMatrix(myTrain$classe, predictTrain)
+```
+
+
+#Apply the RF Model on the Partitioned Test Set and Determine OUt of Sample Accuracy: Here, Out of Sample Accuracy on Test set= ~99.9%, which is suprisingly damn good.  As this is so good, no reason to go back and do more cross-validation, look at alternative models, etc.  I'm satisfied.
+```{r Test Set and Out Of Sample Error}
+predictTest <- predict(rfMod, myTest, type = "class")
+confusionMatrix(myTest$classe, predictTest)
+```
+
+
+#Now use the 20 Observation "Validation" Imported test set: Only based on 20 Observations but should be 100% correct.
+```{r Final 20 Obs Set Prediction and Error}
+predictTEST20 <- predict(rfMod, test, type = "class")
+predictTEST20
+```
